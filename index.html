@@ -268,11 +268,21 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Expense List -->
-            <div class="mb-4 flex justify-between items-center">
-                <h3 class="font-cute text-xl">消費紀錄</h3>
-                <button onclick="clearExpenses()" class="text-xs text-red-500 underline">清空紀錄</button>
+            <div class="mb-4">
+                <!-- Expense List -->
+                <div class="mb-2 flex justify-between items-center">  
+                    <h3 class="font-cute text-xl">消費紀錄</h3>
+                    <button onclick="clearExpenses()" class="text-xs text-red-500 underline">清空紀錄</button>
+                </div>
+                <!-- NEW EXPORT BUTTONS -->
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <button onclick="exportCSV()" class="bg-green-500 text-white border-2 border-black rounded p-2 font-bold shadow-cartoon-sm cartoon-btn text-xs flex justify-center items-center">
+                        <i class="fa-solid fa-file-csv mr-1"></i> 匯出 Excel
+                    </button>
+                    <button onclick="copyToClipboard()" class="bg-gray-700 text-white border-2 border-black rounded p-2 font-bold shadow-cartoon-sm cartoon-btn text-xs flex justify-center items-center">
+                        <i class="fa-solid fa-copy mr-1"></i> 複製文字
+                    </button>
+                </div>
             </div>
             <div class="bg-white border-2 border-black rounded-lg p-2 mb-4 text-center">
                 <span class="text-sm text-gray-500">目前總計 (TWD)</span>
@@ -665,6 +675,62 @@
                 localStorage.setItem('kyushu_expenses', JSON.stringify(expenses));
                 renderExpenses();
             }
+        }
+
+        function exportCSV() {
+            if(expenses.length === 0) {
+                alert('目前沒有記帳資料');
+                return;
+            }
+
+            // BOM for UTF-8 in Excel
+            let csvContent = "\uFEFF"; 
+            csvContent += "日期,項目,日幣金額,約台幣(x0.2)\n";
+
+            expenses.forEach(ex => {
+                const date = ex.date ? ex.date : new Date(ex.id).toLocaleDateString();
+                const twd = Math.round(ex.amount * RATE);
+                // Quote item to handle commas
+                const item = `"${ex.item}"`; 
+                csvContent += `${date},${item},${ex.amount},${twd}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `九州記帳_${new Date().toLocaleDateString()}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function copyToClipboard() {
+            if(expenses.length === 0) {
+                alert('目前沒有記帳資料');
+                return;
+            }
+
+            let text = "九州之旅記帳清單：\n----------------\n";
+            let totalJPY = 0;
+            let totalTWD = 0;
+
+            expenses.forEach((ex, index) => {
+                const twd = Math.round(ex.amount * RATE);
+                totalJPY += ex.amount;
+                totalTWD += twd;
+                text += `${index+1}. ${ex.item}: ¥${ex.amount} (約NT$${twd})\n`;
+            });
+
+            text += "----------------\n";
+            text += `總計: ¥${totalJPY} (約NT$${totalTWD})`;
+
+            navigator.clipboard.writeText(text).then(() => {
+                alert('已複製到剪貼簿！');
+            }).catch(err => {
+                alert('複製失敗，請手動截圖。');
+            });
         }
 
         // --- Checklist & Memo Logic ---
